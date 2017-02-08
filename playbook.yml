@@ -1,0 +1,106 @@
+# vim: set ft=ansible
+---
+
+- hosts: localhost
+  remote_user: root
+
+  vars:
+    postgres_data_dir: <DATA_DIR>
+    postgres_old_version: <OLD_VERSION>
+    postgres_new_version: <NEW_VERSION>
+    postgres_password: <PG_PASSWD>
+
+  tasks:
+    - name: backup data
+      command: cp {{ postgres_data_dir }} {{ postgres_data_dir }}.backup
+
+    - name: create new data dir
+      file: "{{ postgres_data_dir }}.new"
+
+    - name: initielize new cluster
+      docker_container:
+        pull: true
+        name: pg_new_init
+        image: "postgres:{{ postgres_new_version }}"
+        env:
+          POSTGRES_PASSWORD: '{{ postgres_password }}'
+        volumes:
+          - "{{ postgres_data_dir }}.new:/var/lib/postgresql/data"
+        command: "postgres --single"
+        detach: True
+        state: started
+        ports:
+          - 127.0.0.1:5432:5432
+
+    - name: Wait for data container init finish
+      wait_for: port=5432 state=stopped
+
+    - name: Remove init container
+      docker_container:
+        name: pg_new_init
+        state: absent
+
+    - name: start the old version
+      docker_container:
+        pull: true
+        name: pg_old_cnt
+        image: "postgres:{{ postgres_old_version }}"
+        volumes:
+          - "/usr/lib/postgresql/{{ postgres_old_version }}"
+          - "/usr/share/postgresql/{{ postgres_old_version }}"
+        command: "/bin/bash"
+        detach: True
+        state: started
+
+    - name: start upgrade
+        pull: true
+        name: pg_new_cnt
+        image: "postgres:{{ postgres_new_version }}"
+        volumes:
+          - "{{ postgres_data_dir }}:/tmp/old"
+          - "{{ postgres_data_dir }}.new:/tmp/new"
+        volumes_from:
+          - pg_old_cnt
+        user: postgres
+        command: "/bin/bash -c 'cd /tmp && /usr/lib/postgresql/{{ postgres_new_version }}/bin/pg_upgrade -b /usr/lib/postgresql/{{ postgres_old_version }}/bin/ -B /usr/lib/postgresql/{{ postgres_new_version }}/bin/ -d /tmp/old/ -D /tmp/new/'"
+        state: started
+
+    - name: cleanup migrate containers
+      docker_container:
+        name: '{{ item }}'
+        state: absent
+      with_items:
+        - pg_new_cnt
+        - pg_new_init
+
+    - name: remove old data:
+      file:
+        path: "{{ postgres_data_dir }}"
+        state: absent
+
+    - name: move converted data
+      command: mv {{ postgres_data_dir }}.new {{ postgres_data_dir }}
+
+    - name: run db for vacuum
+      docker_container:
+        pull: true
+        name: pg_new_vacuum
+        image: "postgres:{{ postgres_new_version }}"
+        volumes:
+          - "{{ postgres_data_dir }}:/var/lib/postgresql/data"
+        detach: True
+        state: started
+        ports:
+          - 127.0.0.1:5432:5432
+
+    - name: Wait for database start
+      wait_for: port=5432 state=started
+
+    - name: exec vacuum
+      command: docker exec -u postgres pg_new_vacuum "/usr/lib/postgresql/9.6/bin/vacuumdb --all --analyze-in-stages"
+
+    - name: remove vacuum container
+      docker_container:
+        name: pg_new_vacuum
+        state: absent
+
