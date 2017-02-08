@@ -12,10 +12,12 @@
 
   tasks:
     - name: backup data
-      command: cp {{ postgres_data_dir }} {{ postgres_data_dir }}.backup
+      command: cp -a {{ postgres_data_dir }} {{ postgres_data_dir }}.backup
 
     - name: create new data dir
-      file: "{{ postgres_data_dir }}.new"
+      file:
+        path: "{{ postgres_data_dir }}.new"
+        state: directory
 
     - name: initielize new cluster
       docker_container:
@@ -53,6 +55,7 @@
         state: started
 
     - name: start upgrade
+      docker_container:
         pull: true
         name: pg_new_cnt
         image: "postgres:{{ postgres_new_version }}"
@@ -71,9 +74,9 @@
         state: absent
       with_items:
         - pg_new_cnt
-        - pg_new_init
+        - pg_old_cnt
 
-    - name: remove old data:
+    - name: remove old data
       file:
         path: "{{ postgres_data_dir }}"
         state: absent
@@ -97,7 +100,7 @@
       wait_for: port=5432 state=started
 
     - name: exec vacuum
-      command: docker exec -u postgres pg_new_vacuum "/usr/lib/postgresql/9.6/bin/vacuumdb --all --analyze-in-stages"
+      command: docker exec -u postgres pg_new_vacuum /usr/lib/postgresql/9.6/bin/vacuumdb --all --analyze-in-stages
 
     - name: remove vacuum container
       docker_container:
