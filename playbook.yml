@@ -5,10 +5,10 @@
   remote_user: root
 
   vars:
-    postgres_data_dir: <DATA_DIR>
-    postgres_old_version: <OLD_VERSION>
-    postgres_new_version: <NEW_VERSION>
-    postgres_password: <PG_PASSWD>
+    postgres_data_dir: "{{ lookup('env', 'PG_DATA_DIR') }}"
+    postgres_old_version: "{{ lookup('env', 'PG_FROM') }}"
+    postgres_new_version: "{{ lookup('env', 'PG_TO') }}"
+    postgres_password: "{{ lookup('env', 'PG_PW') }}"
 
   tasks:
     - name: backup data
