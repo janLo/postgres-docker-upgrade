@@ -100,7 +100,7 @@
       wait_for: port=5432 state=started
 
     - name: exec vacuum
-      command: docker exec -u postgres pg_new_vacuum /usr/lib/postgresql/9.6/bin/vacuumdb --all --analyze-in-stages
+      command: docker exec -u postgres pg_new_vacuum /usr/lib/postgresql/{{ postgres_new_version }}/bin/vacuumdb --all --analyze-in-stages
 
     - name: remove vacuum container
       docker_container:
