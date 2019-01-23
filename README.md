@@ -15,7 +15,7 @@ The basic config is done via environment.
 The following variables must be set:
 * ***PG_DATA_DIR*** The directory on the docker host where the postgres data lives (e.g. /mnt/container/postgres).
 * ***PG_FROM*** The version of postgres you want to upgrade FROM (e.g. 9.4).
-* ***TG_TO*** The Version of postgres you want to upgrade TO (e.g. 9.6)
+* ***PG_TO*** The Version of postgres you want to upgrade TO (e.g. 9.6)
 * ***PG_PW*** Postgres password for the new cluster.
 
 Then just run the ansible playbook:
