@@ -31,6 +31,14 @@ If everything works as expected you should only get yellow and gree messages ;)
 
 If anything goes wrong, there will be a backup of your data suffixd with `.backup`!
 
+## Tested with
+
+The migration playbook was sucessfully tested with these migrations:
+
+* 9.4 -> 9.6
+* 9.6 -> 10
+* 10 -> 11
+
 ## Manual steps
 
 These are the steps if you want to run the process manually:
